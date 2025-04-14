@@ -172,5 +172,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-/data
 .DS_Store
+.venv/
+output/
+models/
+data/EMNIST/
+*.pt
+*.pth
+*.zip
+*.tar.gz
+*.npy
+*.npz
