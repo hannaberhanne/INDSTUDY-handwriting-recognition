@@ -172,3 +172,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+# Ignore datasets and model files
+emnist/
+data/
+dataset/
+models/
+*.pt
+*.pth
+*.zip
+*.tar.gz
+*.npy
+*.npz
