@@ -183,3 +183,6 @@ data/EMNIST/
 *.tar.gz
 *.npy
 *.npz
+
+# Raw EMNIST Data
+EMNIST/
