@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Data transforms for EMNIST images
 transform_train = transforms.Compose([
-    transforms.RandomRotation(10),
+    transforms.RandomRotation(90),
     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
@@ -116,14 +116,20 @@ evaluate_model()
 # Run prediction on a custom image
 def predict_custom_image(path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    print(f"Loaded image: {path}, shape: {img.shape if img is not None else 'None'}")
     if img is None:
         print(f"Couldn't load image: {path}")
         return
 
     # Threshold + invert (so letter is white on black bg)
     _, binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    plt.figure()
+    plt.imshow(binary, cmap='gray')
+    plt.title("Thresholded")
+    plt.show()
 
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    print("Number of contours found:", len(contours))
     if not contours:
         print("No contours found.")
         return
@@ -131,7 +137,19 @@ def predict_custom_image(path):
     # Use largest contour (likely the letter)
     largest = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest)
-    cropped = binary[y:y+h, x:x+w]
+
+    # Add margin to avoid aggressive cropping
+    margin = 4  # You can adjust this value
+    x_start = max(x - margin, 0)
+    y_start = max(y - margin, 0)
+    x_end = min(x + w + margin, binary.shape[1])
+    y_end = min(y + h + margin, binary.shape[0])
+
+    cropped = binary[y_start:y_end, x_start:x_end]
+    plt.figure()
+    plt.imshow(cropped, cmap='gray')
+    plt.title("Cropped (pre-resize)")
+    plt.show()
 
     # Optional smoothing
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -140,7 +158,8 @@ def predict_custom_image(path):
     # Resize and normalize
     resized = cv2.resize(cropped, (28, 28))
     normalized = resized.astype('float32') / 255.0
-    tensor = torch.tensor(normalized).unsqueeze(0).unsqueeze(0).to(device)
+    inverted = 1 - normalized
+    tensor = torch.tensor(inverted).unsqueeze(0).unsqueeze(0).to(device)
 
     # Predict
     model.eval()
@@ -161,4 +180,4 @@ def predict_custom_image(path):
     print("Result image saved as prediction_result.png")
 
 # Test with one of the letter images
-predict_custom_image('data/letters/H.jpg')
+predict_custom_image('../data/letters/K.jpg')

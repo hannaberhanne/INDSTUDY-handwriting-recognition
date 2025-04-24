@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Data transforms for EMNIST images
 transform_train = transforms.Compose([
-    transforms.RandomRotation(10),
+    transforms.RandomRotation(90),
     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
@@ -115,7 +115,12 @@ def predict_custom_image(path):
     # Use largest contour (likely the letter)
     largest = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest)
-    cropped = binary[y:y+h, x:x+w]
+    margin = 8  # instead of 4
+    x_start = max(x - margin, 0)
+    y_start = max(y - margin, 0)
+    x_end = min(x + w + margin, binary.shape[1])
+    y_end = min(y + h + margin, binary.shape[0])
+    cropped = binary[y_start:y_end, x_start:x_end]
 
     # Optional smoothing
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -124,7 +129,8 @@ def predict_custom_image(path):
     # Resize and normalize
     resized = cv2.resize(cropped, (28, 28))
     normalized = resized.astype('float32') / 255.0
-    tensor = torch.tensor(normalized).unsqueeze(0).unsqueeze(0).to(device)
+    inverted = 1 - normalized
+    tensor = torch.tensor(inverted).unsqueeze(0).unsqueeze(0).to(device)
 
     # Predict
     model.eval()
@@ -134,11 +140,11 @@ def predict_custom_image(path):
         predicted_letter = chr(predicted + 96)  # EMNIST: 1 = 'a'
 
     print(f"Predicted Letter: {predicted_letter}")
-    plt.imshow(resized, cmap='gray')
+    plt.imshow(inverted, cmap='gray')
     plt.title(f"Prediction: {predicted_letter}")
     plt.axis('off')
     plt.savefig("prediction_result.png")
     print("Result image saved as prediction_result.png")
 
 # Test with one of the letter images
-predict_custom_image('data/letters/H.jpg')
+predict_custom_image('../data/letters/K.jpg')
