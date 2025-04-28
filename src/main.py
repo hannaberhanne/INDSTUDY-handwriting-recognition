@@ -147,4 +147,4 @@ def predict_custom_image(path):
     print("Result image saved as prediction_result.png")
 
 # Test with one of the letter images
-predict_custom_image('../data/letters/K.jpg')
+predict_custom_image('../data/letters/T.jpg')
