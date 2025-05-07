@@ -12,7 +12,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # Data transforms for EMNIST images
 transform_train = transforms.Compose([
-    transforms.RandomRotation(90),
+    transforms.Lambda(lambda img: transforms.functional.rotate(img, -90)),
     transforms.RandomAffine(degrees=0, translate=(0.1, 0.1)),
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
@@ -20,6 +20,7 @@ transform_train = transforms.Compose([
 ])
 
 transform_test = transforms.Compose([
+    transforms.Lambda(lambda img: transforms.functional.rotate(img, -90)),
     transforms.Resize((28, 28)),
     transforms.ToTensor(),
     transforms.Lambda(lambda x: 1 - x)
@@ -38,6 +39,7 @@ class LetterCNN(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3)
+        self.dropout = nn.Dropout(0.25)
         self.fc1 = nn.Linear(5 * 5 * 64, 128)  # assumes input dims after pooling
         self.fc2 = nn.Linear(128, num_classes)
 
@@ -47,6 +49,7 @@ class LetterCNN(nn.Module):
         x = F.relu(self.conv2(x))       # 11x11 -> pool -> ~5x5
         x = F.max_pool2d(x, 2)
         x = x.view(x.size(0), -1)
+        x = self.dropout(x)
         x = F.relu(self.fc1(x))
         return self.fc2(x)
 
@@ -64,7 +67,7 @@ if os.path.exists(model_path):
 else:
     print("Training new model...")
     model.train()
-    for epoch in range(5):
+    for epoch in range(15):
         total_loss = 0
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
@@ -76,7 +79,7 @@ else:
             optimizer.step()
 
             total_loss += loss.item()
-        print(f"Epoch {epoch+1}/5 - Avg Loss: {total_loss/len(train_loader):.4f}")
+        print(f"Epoch {epoch+1}/15 - Avg Loss: {total_loss/len(train_loader):.4f}")
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
 
@@ -100,6 +103,7 @@ evaluate_model()
 # Run prediction on a custom image
 def predict_custom_image(path):
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE)
     if img is None:
         print(f"Couldn't load image: {path}")
         return
@@ -147,4 +151,4 @@ def predict_custom_image(path):
     print("Result image saved as prediction_result.png")
 
 # Test with one of the letter images
-predict_custom_image('../data/letters/T.jpg')
+predict_custom_image(os.path.join(os.path.dirname(__file__), '..', 'data', 'letters', 'H.jpg'))
